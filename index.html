@@ -1,1 +1,100 @@
 
+DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Street Scanner</title>
+<style>
+body{font-family:sans-serif;background:#0a0a0f;color:#fff;padding:20px}
+input,button{padding:10px;margin:5px;width:100%}
+.card{background:#1a1a2e;padding:10px;margin:10px 0;border-radius:8px}
+</style>
+</head>
+<body>
+
+<h2>Street Scanner</h2>
+
+<input id="streetInput" placeholder="e.g. King St Newtown NSW">
+<button onclick="startScan()">Scan Street</button>
+
+<div id="results"></div>
+
+<script>
+
+// 🔥 PASTE YOUR API KEY HERE ONLY
+const GOOGLE_API_KEY = "AIzaSyD78j80vUQ5Il4UPI_qmMJJhY22XGn-mJo";
+
+let googleLoaded = false;
+
+function loadGoogleMaps() {
+  return new Promise((resolve, reject) => {
+    if (googleLoaded && window.google) return resolve();
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places`;
+    script.onload = () => {
+      googleLoaded = true;
+      resolve();
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+function extractStreetName(input) {
+  return input.split(',')[0];
+}
+
+function startScan() {
+  const input = document.getElementById('streetInput').value;
+  if (!input) return alert('Enter a street');
+
+  loadGoogleMaps().then(() => {
+    const service = new google.maps.places.PlacesService(document.createElement('div'));
+
+    const geocoder = new google.maps.Geocoder();
+
+    geocoder.geocode({ address: input }, (results, status) => {
+      if (status !== 'OK') return alert('Location not found');
+
+      const location = results[0].geometry.location;
+
+      service.nearbySearch(
+        { location, radius: 200, type: ['establishment'] },
+        (places, status) => {
+          if (status !== 'OK') return alert('No results');
+
+          const street = extractStreetName(input).toLowerCase();
+
+          const filtered = places.filter(p =>
+            (p.vicinity || '').toLowerCase().includes(street)
+          );
+
+          renderResults(filtered);
+        }
+      );
+    });
+  });
+}
+
+function renderResults(places) {
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+
+  places.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+      <strong>${p.name}</strong><br>
+      ${p.vicinity}<br>
+      ⭐ ${p.rating || 'N/A'}
+    `;
+    container.appendChild(div);
+  });
+}
+
+</script>
+
+</body>
+</html>
